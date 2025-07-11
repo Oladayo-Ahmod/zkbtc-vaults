@@ -1,6 +1,6 @@
 pragma circom 2.1.5;
 
-include "circomlib/poseidon.circom";
+include "poseidon.circom";
 
 template VaultUnlock() {
     signal input secret;

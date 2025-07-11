@@ -1,0 +1,13 @@
+# Secrets / private data
+input.json
+witness.wtns
+proof.json
+public.json
+
+# Large or personal proving keys
+vaultUnlock_0000.zkey
+vaultUnlock_final.zkey
+verification_key.json
+
+# Temporary/compiled files
+vaultUnlock_js/

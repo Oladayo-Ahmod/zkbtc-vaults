@@ -17,3 +17,7 @@ node_modules
 ignition/deployments/chain-31337
 
 circom
+*.zkey
+*.ptau
+*.r1cs
+*.sym
