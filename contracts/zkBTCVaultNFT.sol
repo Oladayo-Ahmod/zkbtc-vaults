@@ -1,37 +1,39 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract zkBTCVaultBadge is ERC721URIStorage, Ownable {
-    uint256 public nextTokenId;
-    mapping(address => bool) public hasClaimed;
+    uint256 private _tokenIdCounter;
+    mapping(address => bool) private _hasMinted;
 
-    string public baseTokenURI;
+    constructor() ERC721("zkBTC Vault Badge", "zkBTCBadge") Ownable(msg.sender) {}
 
-    constructor(string memory _baseTokenURI) ERC721("zkBTC Vault Badge", "zkBTCBadge") {
-        baseTokenURI = _baseTokenURI;
+
+    /// @dev Soulbound enforcement: only mint or burn allowed, no transfers
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal virtual override returns (address) {
+        address from = _ownerOf(tokenId);
+        require(
+            from == address(0) || to == address(0),
+            "Soulbound: cannot transfer"
+        );
+        return super._update(to, tokenId, auth);
     }
 
-    /// @notice Mint a soulbound badge to a user (once only)
-    function mint(address to) external onlyOwner {
-        require(!hasClaimed[to], "Already claimed");
-
-        uint256 tokenId = nextTokenId;
-        _mint(to, tokenId);
-        _setTokenURI(tokenId, baseTokenURI);
-        hasClaimed[to] = true;
-
-        nextTokenId++;
+    function hasMinted(address user) external view returns (bool) {
+    return _hasMinted[user];
     }
 
-    /// @dev Prevents all transfers (soulbound)
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
-        internal
-        override
-    {
-        require(from == address(0) || to == address(0), "Soulbound: Non-transferable");
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    function mintBadge(address to, string memory uri) external onlyOwner {
+    require(!_hasMinted[to], "Already minted");
+    uint256 tokenId = ++_tokenIdCounter;
+    _safeMint(to, tokenId);
+    _setTokenURI(tokenId, uri);
+    _hasMinted[to] = true;
     }
 }
