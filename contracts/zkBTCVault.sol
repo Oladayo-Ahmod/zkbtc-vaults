@@ -22,17 +22,12 @@ contract zkBTCVault is Groth16Verifier {
     event VaultUnlocked(address indexed user, uint256 nullifier);
     event VaultWithdrawn(address indexed user, uint256 amount);
 
-
-
     constructor(address _btcToken, address _nftBadge) {
         owner = msg.sender;
         btcToken = IERC20(_btcToken);
         nftBadge = zkBTCVaultBadge(_nftBadge);
     }
 
-    /**
-     * @notice Deposit BTC (represented as ERC20 like WBTC) into the vault
-     */
     function deposit(uint256 amount) external {
         require(amount > 0, "Amount must be > 0");
         require(btcToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
@@ -40,52 +35,42 @@ contract zkBTCVault is Groth16Verifier {
         emit VaultDeposited(msg.sender, amount);
     }
 
-    /**
-     * @notice Unlock vault access using a ZK proof.
-     * @param a Groth16 proof param
-     * @param b Groth16 proof param
-     * @param c Groth16 proof param
-     * @param input Public inputs: [expectedHash, nullifier]
-     */
     function unlockVault(
-        uint[2] calldata a,
-        uint[2][2] calldata b,
-        uint[2] calldata c,
-        uint[] calldata input
-    ) external {
-         require(verifyProof(a, b, c, input), "Invalid ZK proof");
-        require(input.length == 2, "Expected 2 public inputs");
-        uint256 expectedHash = input[0];
-        uint256 nullifier = input[1];
+    uint[2] calldata a,
+    uint[2][2] calldata b,
+    uint[2] calldata c,
+    uint[1] calldata input 
+) external {
+    require(input.length == 1, "Expected 1 public inputs");
+    uint256 nullifier = input[0];
 
-        require(!nullifiersUsed[nullifier], "Proof already used");
-        require(verifyProof(a, b, c, input), "Invalid ZK proof");
+    require(!nullifiersUsed[nullifier], "Proof is already used");
+    
+    // This will now properly integrate with Solidity's control flow
+    bool proofValid = verifyProof(a, b, c, input);
+    require(proofValid, "Invalid ZK proof");
 
-        unlocked[msg.sender] = true;
-        nullifiersUsed[nullifier] = true;
-          // Mint NFT badge
-        if (!nftBadge.hasMinted(msg.sender)) {
-            nftBadge.mintBadge(msg.sender, string(abi.encodePacked(baseBadgeURI, "badge.json")));
-        }
+    unlocked[msg.sender] = true;
+    nullifiersUsed[nullifier] = true;
 
-        emit VaultUnlocked(msg.sender, nullifier);
+    // Check NFT balance - simplified version
+    if (nftBadge.balanceOf(msg.sender) == 0) {
+        nftBadge.mintBadge(msg.sender, string(abi.encodePacked(baseBadgeURI, "badge.json")));
     }
 
-    /**
-     * @notice Withdraw tokens after unlocking
-     */
+    emit VaultUnlocked(msg.sender, nullifier);
+}
     function withdraw() external {
         require(unlocked[msg.sender], "Vault is locked");
         uint256 amount = balances[msg.sender];
         require(amount > 0, "No balance to withdraw");
 
         balances[msg.sender] = 0;
-        require(btcToken.transfer(msg.sender, amount), "Withdraw failed");
+        require(btcToken.transfer(msg.sender, amount), "Withdraw failed!");
 
         emit VaultWithdrawn(msg.sender, amount);
     }
 
-    // Admin recovery or updates 
     function setBTC(address _btcToken) external {
         require(msg.sender == owner, "Only owner");
         btcToken = IERC20(_btcToken);
