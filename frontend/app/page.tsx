@@ -1,26 +1,31 @@
-"use client";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { CheckCircle, Lock, Wallet, BadgeCheck } from "lucide-react";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
+import Link from "next/link";
+import { ethers } from "ethers";
+import { toast } from "sonner";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { zkBTCVaultAbi, erc20Abi, VAULT_ADDRESS, WBTC_ADDRESS } from "@/lib/contract";
+import { parseUnits } from "viem/utils";
+
+
+const wBTCAddress = "0x07e540B31DfA55C4cf7E4eF83BeDd3fFdc39e2d4"; // Example testnet wBTC
+const zkVaultAddress = "YOUR_VAULT_CONTRACT_ADDRESS";
+const wBTCABI = [
+  "function approve(address spender, uint256 amount) public returns (bool)",
+];
+const vaultABI = [
+  "function depositBTC(uint256 amount) external",
+];
 
 export default function Home() {
   const [step, setStep] = useState(0);
   const [showDeposit, setShowDeposit] = useState(false);
   const [btcAmount, setBtcAmount] = useState(0);
-
-  const { isConnected, address } = useAccount();
 
   const steps = [
     {
@@ -43,6 +48,39 @@ export default function Home() {
     },
   ];
 
+  const { address } = useAccount();
+  const { data: hash, writeContractAsync } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+
+  async function handleDeposit() {
+    try {
+      const amount = parseUnits(btcAmount.toString(), 18); // wBTC is 18 decimals on Citrea
+
+      // Step 1: Approve Vault
+      await writeContractAsync({
+        address: WBTC_ADDRESS,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [VAULT_ADDRESS, amount],
+      });
+
+      // Step 2: Deposit to Vault
+      await writeContractAsync({
+        address: VAULT_ADDRESS,
+        abi: zkBTCVaultAbi,
+        functionName: "deposit",
+        args: [amount],
+      });
+
+      toast.success("Deposit successful!");
+      setShowDeposit(false);
+      setStep(1);
+    } catch (err) {
+      console.error(err);
+      toast.error("Deposit failed");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-zinc-800 text-white p-6">
       <div className="max-w-5xl mx-auto text-center space-y-6">
@@ -63,10 +101,6 @@ export default function Home() {
           Privately prove ownership of BTC using zero-knowledge proofs and earn a soulbound NFT badge.
         </motion.p>
 
-        <div className="flex justify-center pt-4">
-          <ConnectButton showBalance={false} />
-        </div>
-
         <div className="grid md:grid-cols-3 gap-6 pt-8">
           {steps.map((s, i) => (
             <motion.div
@@ -75,19 +109,12 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.2 }}
             >
-              <Card
-                className={`bg-zinc-900/50 border border-zinc-700 shadow-xl hover:shadow-orange-500/20 transition-all ${
-                  step === i && "ring-2 ring-orange-500"
-                }`}
-              >
+              <Card className={`bg-zinc-900/50 border border-zinc-700 shadow-xl hover:shadow-orange-500/20 transition-all ${step === i && "ring-2 ring-orange-500"}`}>
                 <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
                   {s.icon}
                   <h3 className="text-xl font-semibold">{s.title}</h3>
                   <p className="text-sm text-zinc-400">{s.description}</p>
-                  <Button
-                    onClick={s.action}
-                    className="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-2 rounded-xl hover:brightness-110"
-                  >
+                  <Button onClick={s.action} className="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-2 rounded-xl hover:brightness-110">
                     {step === i ? "Continue" : "Start"}
                   </Button>
                 </CardContent>
@@ -96,33 +123,26 @@ export default function Home() {
           ))}
         </div>
 
-        {isConnected && step === 0 && (
+        {step === 0 && (
           <div className="mt-10">
             <h2 className="text-2xl font-bold mb-4">Deposit BTC</h2>
-            <Button
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-              onClick={() => setShowDeposit(true)}
-            >
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={() => setShowDeposit(true)}>
               Open Deposit Modal
             </Button>
           </div>
         )}
 
-        {isConnected && step === 1 && (
+        {step === 1 && (
           <div className="mt-10">
             <h2 className="text-2xl font-bold mb-4">Generate ZK Proof</h2>
-            <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-              Start Proof Generation
-            </Button>
+            <Button className="bg-purple-600 hover:bg-purple-700 text-white">Start Proof Generation</Button>
           </div>
         )}
 
-        {isConnected && step === 2 && (
+        {step === 2 && (
           <div className="mt-10">
             <h2 className="text-2xl font-bold mb-4">Unlock Vault & Receive NFT</h2>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-              Unlock & Mint Badge
-            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white">Unlock & Mint Badge</Button>
           </div>
         )}
       </div>
@@ -130,9 +150,7 @@ export default function Home() {
       <Dialog open={showDeposit} onOpenChange={setShowDeposit}>
         <DialogContent className="bg-zinc-900 border border-zinc-700">
           <DialogHeader>
-            <DialogTitle className="text-white text-xl">
-              Deposit Wrapped BTC
-            </DialogTitle>
+            <DialogTitle className="text-white text-xl">Deposit Wrapped BTC</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <label className="block text-sm text-zinc-400">Amount (wBTC)</label>
@@ -144,14 +162,13 @@ export default function Home() {
               onChange={(e) => setBtcAmount(parseFloat(e.target.value))}
             />
             <Button
-              onClick={() => {
-                setShowDeposit(false);
-                setStep(1);
-              }}
+              disabled={isConfirming}
+              onClick={handleDeposit}
               className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:brightness-110 text-white"
             >
-              Confirm Deposit
+              {isConfirming ? "Processing..." : "Confirm Deposit"}
             </Button>
+
           </div>
         </DialogContent>
       </Dialog>
