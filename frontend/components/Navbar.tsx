@@ -3,8 +3,16 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 
 export default function Navbar() {
+  const { address, isConnected } = useAccount();
+
+  const truncatedAddress = address 
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : '';
+
   return (
     <motion.nav
       initial={{ y: -50, opacity: 0 }}
@@ -21,7 +29,77 @@ export default function Navbar() {
           <Link href="/" className="text-sm text-zinc-300 hover:text-white transition">Home</Link>
           <Link href="/vault" className="text-sm text-zinc-300 hover:text-white transition">Vault</Link>
           <Link href="/badge" className="text-sm text-zinc-300 hover:text-white transition">Badge</Link>
-          <Button className="bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:brightness-110">Connect Wallet</Button>
+          
+          <ConnectButton.Custom>
+            {({
+              account,
+              chain,
+              openAccountModal,
+              openChainModal,
+              openConnectModal,
+              authenticationStatus,
+              mounted,
+            }) => {
+              const ready = mounted && authenticationStatus !== 'loading';
+              const connected = ready && account && chain;
+
+              return (
+                <div
+                  {...(!ready && {
+                    'aria-hidden': true,
+                    'style': {
+                      opacity: 0,
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  })}
+                >
+                  {(() => {
+                    if (!connected) {
+                      return (
+                        <Button 
+                          onClick={openConnectModal}
+                          className="bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:brightness-110"
+                        >
+                          Connect Wallet
+                        </Button>
+                      );
+                    }
+
+                    if (chain.unsupported) {
+                      return (
+                        <Button 
+                          onClick={openChainModal}
+                          className="bg-gradient-to-r from-red-500 to-pink-500 text-white hover:brightness-110"
+                        >
+                          Wrong Network
+                        </Button>
+                      );
+                    }
+
+                    return (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={openChainModal}
+                          variant="outline"
+                          className="text-sm text-zinc-200 border-zinc-700 hover:bg-zinc-800"
+                        >
+                          {chain.name}
+                        </Button>
+                        
+                        <Button
+                          onClick={openAccountModal}
+                          className="bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:brightness-110"
+                        >
+                          {account.displayName}
+                        </Button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
         </div>
       </div>
     </motion.nav>

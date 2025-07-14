@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,21 +13,18 @@ import { toast } from "sonner";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { zkBTCVaultAbi, erc20Abi, VAULT_ADDRESS, WBTC_ADDRESS } from "@/lib/contract";
 import { parseUnits } from "viem/utils";
+import GenerateProof from "@/components/GenerateProof";
+import MintBadge from "@/components/MintBadge";
 
 
-const wBTCAddress = "0x07e540B31DfA55C4cf7E4eF83BeDd3fFdc39e2d4"; // Example testnet wBTC
-const zkVaultAddress = "YOUR_VAULT_CONTRACT_ADDRESS";
-const wBTCABI = [
-  "function approve(address spender, uint256 amount) public returns (bool)",
-];
-const vaultABI = [
-  "function depositBTC(uint256 amount) external",
-];
+
 
 export default function Home() {
   const [step, setStep] = useState(0);
   const [showDeposit, setShowDeposit] = useState(false);
   const [btcAmount, setBtcAmount] = useState(0);
+  const [proof, setProof] = useState<any>(null);
+  const [publicSignals, setPublicSignals] = useState<string[]>([]);
 
   const steps = [
     {
@@ -135,16 +134,23 @@ export default function Home() {
         {step === 1 && (
           <div className="mt-10">
             <h2 className="text-2xl font-bold mb-4">Generate ZK Proof</h2>
-            <Button className="bg-purple-600 hover:bg-purple-700 text-white">Start Proof Generation</Button>
+            <GenerateProof
+              onComplete={(genProof, signals) => {
+                setProof(genProof);
+                setPublicSignals(signals);
+                setStep(2); // proceed to next step
+              }}
+            />
           </div>
         )}
 
-        {step === 2 && (
+        {step === 2 && proof && publicSignals && (
           <div className="mt-10">
             <h2 className="text-2xl font-bold mb-4">Unlock Vault & Receive NFT</h2>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">Unlock & Mint Badge</Button>
+            <MintBadge proof={proof} publicSignals={publicSignals} />
           </div>
         )}
+
       </div>
 
       <Dialog open={showDeposit} onOpenChange={setShowDeposit}>
