@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { useAccount, useWriteContract } from "wagmi";
 import zkVaultAbi from "@/lib/zkBTCVault.json";
 
@@ -19,34 +19,44 @@ export default function MintBadge({
   const [loading, setLoading] = useState(false);
   const { writeContractAsync } = useWriteContract();
 
-  async function handleMint() {
-    if (!address) return toast.error("Connect wallet first");
-    setLoading(true);
-    try {
-      const calldata = [
-        [proof.pi_a[0], proof.pi_a[1]],
-        [
-          [proof.pi_b[0][1], proof.pi_b[0][0]],
-          [proof.pi_b[1][1], proof.pi_b[1][0]],
-        ],
-        [proof.pi_c[0], proof.pi_c[1]],
-        publicSignals,
-      ];
+async function handleMint() {
+  if (!address) return toast.error("Connect wallet first");
+  setLoading(true);
+  try {
+    const a = [proof.pi_a[0], proof.pi_a[1]];
+    const b = [
+      [proof.pi_b[0][1], proof.pi_b[0][0]],
+      [proof.pi_b[1][1], proof.pi_b[1][0]],
+    ];
+    const c = [proof.pi_c[0], proof.pi_c[1]];
+    const input = [publicSignals[0]];
 
-      await writeContractAsync({
-        address: VAULT_ADDRESS,
-        abi: zkVaultAbi,
-        functionName: "mintWithProof",
-        args: calldata,
-      });
+    await writeContractAsync({
+      address: VAULT_ADDRESS,
+      abi: zkVaultAbi,
+      functionName: "unlockVault",
+      args: [a, b, c, input],
+    });
 
-      toast.success("Soulbound badge minted!");
-    } catch (err: any) {
-      toast.error(err.message || "Mint failed");
-    } finally {
-      setLoading(false);
+    toast.success("Soulbound badge minted!");
+  } catch (err: any) {
+    console.error("Transaction Error:", err);
+
+    // Extract meaningful revert reason
+    if (err?.shortMessage) {
+      toast.error(err.shortMessage);
+    } else if (err?.cause?.message) {
+      toast.error(err.cause.message);
+    } else if (err?.message) {
+      toast.error(err.message);
+    } else {
+      toast.error("Transaction failed");
     }
+  } finally {
+    setLoading(false);
   }
+}
+
 
   return (
     <Button

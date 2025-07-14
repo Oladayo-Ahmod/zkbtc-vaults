@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
 import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from 'react-toastify';
 
 
 const queryClient = new QueryClient()
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <RainbowKitProvider>
                   <Navbar />
                   {children}
+                   <ToastContainer />
                 </RainbowKitProvider>
               </QueryClientProvider>
             </WagmiProvider>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { getWitnessCalculator } from "@/app/utils/witnessCalculator";
 import MintBadge from "./MintBadge";
 import { buildPoseidon } from "circomlibjs";
@@ -54,6 +54,7 @@ async function handleGenerate() {
 
     toast.success("Proof verified successfully");
     onComplete(proof, publicSignals);
+    console.log(proof,publicSignals)
   } catch (err: any) {
     console.error(err);
     toast.error(err.message || "Something went wrong");

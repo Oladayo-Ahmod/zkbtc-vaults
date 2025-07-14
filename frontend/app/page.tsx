@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { CheckCircle, Lock, Wallet, BadgeCheck } from "lucide-react";
 import Link from "next/link";
 import { ethers } from "ethers";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { zkBTCVaultAbi, erc20Abi, VAULT_ADDRESS, WBTC_ADDRESS } from "@/lib/contract";
 import { parseUnits } from "viem/utils";
@@ -147,9 +147,25 @@ export default function Home() {
         {step === 2 && proof && publicSignals && (
           <div className="mt-10">
             <h2 className="text-2xl font-bold mb-4">Unlock Vault & Receive NFT</h2>
-            <MintBadge proof={proof} publicSignals={publicSignals} />
+            <MintBadge
+              proof={proof}
+              publicSignals={publicSignals}
+              onSuccess={() => {
+                toast.success("Mint complete!");
+              }}
+            />
+            <div className="mt-4 text-center">
+              <Button
+                variant="outline"
+                onClick={() => setStep(0)}
+                className="text-sm text-zinc-300 hover:text-white"
+              >
+                🔁 Start Over
+              </Button>
+            </div>
           </div>
         )}
+
 
       </div>
 
