@@ -40,7 +40,7 @@ contract zkBTCVault is Groth16Verifier {
     uint[2][2] calldata b,
     uint[2] calldata c,
     uint[1] calldata input 
-) external {
+    ) external {
     require(input.length == 1, "Expected 1 public inputs");
     uint256 nullifier = input[0];
 
